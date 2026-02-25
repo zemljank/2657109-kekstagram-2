@@ -1,4 +1,5 @@
 import { generatePhotos } from "./photo.js";
+import { renderPictures } from "./pictures.js";
 
 const photos = generatePhotos();
-console.log(photos);
+renderPictures(photos);

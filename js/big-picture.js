@@ -1,5 +1,6 @@
 const bigPictureElement = document.querySelector('.big-picture');
 const COMMENT_AVATAR_SIZE = 35;
+const COMMENTS_BATCH_SIZE = 5;
 const bigPictureImage = bigPictureElement.querySelector('.big-picture__img img');
 const likesCountElement = bigPictureElement.querySelector('.likes-count');
 const socialCommentShownCountElement = bigPictureElement.querySelector(
@@ -13,6 +14,9 @@ const socialCaptionElement = bigPictureElement.querySelector('.social__caption')
 const socialCommentCountElement = bigPictureElement.querySelector('.social__comment-count');
 const commentsLoaderElement = bigPictureElement.querySelector('.social__comments-loader');
 const closeButtonElement = bigPictureElement.querySelector('.big-picture__cancel');
+
+let currentPhotoComments = [];
+let renderedCommentsCount = 0;
 
 const createCommentElement = ({ avatar, name, message }) => {
   const commentElement = document.createElement('li');
@@ -33,6 +37,32 @@ const createCommentElement = ({ avatar, name, message }) => {
   return commentElement;
 };
 
+const toggleCommentsLoader = () => {
+  const isAllCommentsRendered = renderedCommentsCount >= currentPhotoComments.length;
+  commentsLoaderElement.classList.toggle('hidden', isAllCommentsRendered);
+};
+
+const renderCommentsBatch = () => {
+  const nextComments = currentPhotoComments.slice(
+    renderedCommentsCount,
+    renderedCommentsCount + COMMENTS_BATCH_SIZE
+  );
+
+  const commentsFragment = document.createDocumentFragment();
+  nextComments.forEach((comment) => {
+    commentsFragment.append(createCommentElement(comment));
+  });
+  socialCommentsElement.append(commentsFragment);
+
+  renderedCommentsCount += nextComments.length;
+  socialCommentShownCountElement.textContent = renderedCommentsCount;
+  toggleCommentsLoader();
+};
+
+const onCommentsLoaderClick = () => {
+  renderCommentsBatch();
+};
+
 const onDocumentKeydown = (evt) => {
   if (evt.key === 'Escape') {
     evt.preventDefault();
@@ -43,25 +73,21 @@ const onDocumentKeydown = (evt) => {
 function openBigPicture(photo) {
   bigPictureElement.classList.remove('hidden');
   document.body.classList.add('modal-open');
+  socialCommentCountElement.classList.remove('hidden');
+  commentsLoaderElement.classList.remove('hidden');
 
   bigPictureImage.src = photo.url;
   bigPictureImage.alt = photo.description;
   likesCountElement.textContent = photo.likes;
-  socialCommentShownCountElement.textContent = photo.comments.length;
-  socialCommentTotalCountElement.textContent = photo.comments.length;
   socialCaptionElement.textContent = photo.description;
+  socialCommentTotalCountElement.textContent = photo.comments.length;
 
-  // Добавлено: каждый раз полностью перерисовываем комментарии текущей фотографии.
+  // Добавлено: на каждый запуск начинаем показ комментариев заново порциями по 5.
+  currentPhotoComments = photo.comments;
+  renderedCommentsCount = 0;
+  socialCommentShownCountElement.textContent = renderedCommentsCount;
   socialCommentsElement.innerHTML = '';
-  const commentsFragment = document.createDocumentFragment();
-  photo.comments.forEach((comment) => {
-    commentsFragment.append(createCommentElement(comment));
-  });
-  socialCommentsElement.append(commentsFragment);
-
-  // Добавлено: по требованиям задания скрываем блок со счётчиком и кнопку загрузки комментариев.
-  socialCommentCountElement.classList.add('hidden');
-  commentsLoaderElement.classList.add('hidden');
+  renderCommentsBatch();
 
   // Добавлено: закрытие по клавише Esc.
   document.removeEventListener('keydown', onDocumentKeydown);
@@ -79,6 +105,7 @@ const onCloseButtonClick = () => {
   closeBigPicture();
 };
 
+commentsLoaderElement.addEventListener('click', onCommentsLoaderClick);
 closeButtonElement.addEventListener('click', onCloseButtonClick);
 
 export { openBigPicture };
